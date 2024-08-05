@@ -123,7 +123,9 @@ This software is written in Python 3.12. The required packages are in pyproject.
 # optional: upgrade setuptools and whell
 pip install --upgrade pip setuptools wheel
 
-cd {path/to/package}
+git clone https://github.com/zhuweix/methylFracAnalyzer.git
+
+cd methylFracAnalyzer
 
 # build the package
 python -m build
