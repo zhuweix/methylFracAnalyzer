@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "Analyze Methylated Fraction (Cut by DpnI)"
+name = "methylatedFractionAnalzyzer"
 version = "1.0.0"
 description = "Process the bigwig file from the Snakemake workflow"
 authors = [
@@ -21,6 +21,8 @@ dependencies = [
     "numpy>=1.26.2",
     "matplotlib>=3.8.2",
     "seaborn>=0.13.0",
+    "pyBigWig>=0.3.22",
+    "statsmodels>=0.14.0",
     ]
 
 classifiers = [
@@ -30,7 +32,10 @@ classifiers = [
 ]
 
 [project.scripts]
-analzyeMethylFrac="analyze_main:cli"
+analzyeMethylFrac="methylFracAnalyzer.analyze_main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["methylFracAnalyzer/"]
 
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"
