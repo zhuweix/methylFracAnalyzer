@@ -1,0 +1,20 @@
+[general]
+other_feature_table = "resource/hg38_gencode_v43.other_feature.csv"
+cen_loc_table = "resource/centromere_location.csv"
+cen_element_table = "resource/centromere_element.csv"
+active_asat_table = "resource/active_hor.csv"
+cenpa_table = "resource/cenpA_location.csv"
+
+[MCF7]
+gene_table = "resource/MCF7_RNAseq_ATAC.csv"
+ctcf_table = "resource/MCF7_CTCF_ENCSR000AHD.csv"
+mnase_smooth_gene_table = "resource/MCF7_MNase1P.gene_average_phasing.csv"
+mnase_smooth_ctcf_table = "resource/MCF7_MNase1P.CTCF_average_phasing.csv"
+chromhmm_table = "resource/MCF7_ChromHMM.t2t.csv"
+
+[MCF10]
+gene_table = "resource/MCF10_RNAseq_ATAC.csv"
+ctcf_table = "resource/MCF10_CTCF_ENCSR193SZD.csv"
+mnase_smooth_gene_table = "resource/MCF7_MNase1P.gene_average_phasing.csv" # MCF7 MNase data is used for MCF10 data since they have similar Nucleosome phasing
+mnase_smooth_ctcf_table = "resource/MCF7_MNase1P.CTCF_average_phasing.csv" # MCF7 MNase data is used for MCF10 data since they have similar Nucleosome phasing
+chromhmm_table = "resource/MCF10_ChromHMM.t2t.csv"

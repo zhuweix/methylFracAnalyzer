@@ -1,0 +1,11 @@
+[meta]
+org = "MCF7" # MCF7 or MCF10
+exp = "Live" # Live or Nuclei
+[sample]
+sample_sheet = "sample/example_sample_sheet.tsv" # the same sample sheet from the snakemake workflow
+[bigwig]
+bw_hg38_prefix = "testdata/example_hg38" # prefix of the bigwig files for hg38 assembly
+bw_t2t_prefix = "testdata/example_t2t"  # prefix of the bigwig files for t2t assembly
+[output]
+figure_dir = "testdata/figure" # output figure directory
+figure_prefix = "example" # prefix of the figure
