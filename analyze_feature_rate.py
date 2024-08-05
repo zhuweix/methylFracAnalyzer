@@ -119,11 +119,13 @@ def plot_methylation_rate(data_pd, data_points, feat_list, feat_names, figure_na
     plt.close()    
 
 
-@click.command(help='Calculate and plot the methylation rates using the median methylated fractions. This subcommand is dependent on the results from the feat_percentile subcommand')
+@click.command(help='Calculate and plot the methylation rates using the median methylated fractions. This subcommand is dependent on the results from the featPercentile subcommand')
 @click.option('--configfile', '-c', type=str, default='', help='config file path')
-@click.option('--resourcefile', '-R', type=str, default='config/resource.toml', help='resource config file path')
 @click.option('--run', '-r', type=str, default='full', help='run mode: full, calc, plot for full run or calculation only or plotting only')
-def main(configfile: str, resourcefile: str, run: str):
+def main(configfile: str, run: str):
+    if not configfile:
+        click.echo(main.get_help(click.get_current_context()))
+        return  
     if not os.path.exists(configfile):
         raise ValueError('Cannot find configfile %s' %configfile)
     with open(configfile, "rb") as f:

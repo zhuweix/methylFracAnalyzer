@@ -409,6 +409,9 @@ def plot_all_median(plot_pd: pd.DataFrame, feat_list: list, feat_name_list: list
 @click.option('--resourcefile', '-R', type=str, default='config/resource.toml', help='resource config file path')
 @click.option('--run', '-r', type=str, default='full', help='run mode: full, calc, plot for full run or calculation only or plotting only')
 def main(configfile: str, resourcefile: str, run: str):
+    if not configfile:
+        click.echo(main.get_help(click.get_current_context()))
+        return   
     if not os.path.exists(configfile):
         raise ValueError('Cannot find configfile %s' %configfile)
     with open(configfile, "rb") as f:

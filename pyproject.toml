@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 [project.scripts]
-analzye_dpni="analyze_main:cli"
+analzyeMethylFrac="analyze_main:cli"
 
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"
