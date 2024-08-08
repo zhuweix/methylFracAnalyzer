@@ -197,7 +197,9 @@ TBD
 [5] Altemose, N.. Complete genomic and epigenetic maps of human centromeres. Science 376, (2022).
 
 [6] Ernst, J. & Kellis, M.. Chromatin-state discovery and genome annotation with ChromHMM. Nature Protocols 12, 2478–2492 (2017).
+
 [7] Franco, H. L.. Enhancer transcription reveals subtype-specific gene expression programs controlling breast cancer pathogenesis. Genome Research 28, 159–170 (2018).
+
 [8] Bommi-Reddy, A.. CREBBP/EP300 acetyltransferase inhibition disrupts FOXA1-bound enhancers to inhibit the proliferation of ER+ breast cancer cells. PLOS ONE 17, e0262378 (2022).
 
 
