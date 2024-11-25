@@ -11,6 +11,8 @@ ctcf_table = "resource/MCF7_CTCF_ENCSR000AHD.csv"
 mnase_smooth_gene_table = "resource/MCF7_MNase.gene_average_phasing.csv"
 mnase_smooth_ctcf_table = "resource/MCF7_MNase.CTCF_average_phasing.csv"
 chromhmm_table = "resource/MCF7_ChromHMM.t2t.csv.gz"
+histone_mark_table_conservative="resource/MCF7_HistoneMark.conservative.csv.gz"
+histone_mark_table_optimal="resource/MCF7_HistoneMark.optimal.csv.gz"
 
 [MCF10]
 gene_table = "resource/MCF10_RNAseq_ATAC.csv"
@@ -18,3 +20,5 @@ ctcf_table = "resource/MCF10_CTCF_ENCSR193SZD.csv"
 mnase_smooth_gene_table = "resource/MCF7_MNase.gene_average_phasing.csv" # MCF7 MNase data is used for MCF10 data since they have similar Nucleosome phasing
 mnase_smooth_ctcf_table = "resource/MCF7_MNase.CTCF_average_phasing.csv" # MCF7 MNase data is used for MCF10 data since they have similar Nucleosome phasing
 chromhmm_table = "resource/MCF10_ChromHMM.t2t.csv.gz"
+histone_mark_table_conservative="resource/MCF10_HistoneMark.conservative.csv.gz"
+histone_mark_table_optimal="resource/MCF10_HistoneMark.optimal.csv.gz"

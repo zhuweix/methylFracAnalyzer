@@ -1,7 +1,5 @@
 import os
 import sys
-import gc
-import sqlite3
 import tomllib
 import logging
 
@@ -22,6 +20,7 @@ logger.addHandler(streamHandler)
 def load_sample_sheet(sample_fn: str, exp: str):
     sample_pd = pd.read_csv(sample_fn, sep='\t', names=['prefix', 'sample'])
     sample_list = sample_pd['sample'].values
+    data_points = None
     if exp == 'Live':
         data_points = [int(s[:-1]) for s in sample_list]
     elif exp == 'Nuclei':
@@ -89,6 +88,14 @@ def calc_methylation_rate(data_pd, data_points):
 def plot_methylation_rate(data_pd, data_points, feat_list, feat_names, figure_name):
     xpos = [da for da in data_points if da > 1e-6]
     max_time = xpos[-1]
+
+    if len(feat_list) <= 10:
+        cmap = sns.color_palette('tab10')
+    elif len(feat_list) <= 20:
+        cmap = sns.color_palette('tab20')
+    else:
+        cmap = sns.color_palette('viridis', n_colors=len(feat_list))
+    sns.set_palette(cmap)    
     for feat, feat_name in zip(feat_list, feat_names):
         tmp_pd = data_pd.loc[data_pd['Feature'] == feat]
         values = []
@@ -110,9 +117,14 @@ def plot_methylation_rate(data_pd, data_points, feat_list, feat_names, figure_na
         g.set_ylim([-2.2, 0])
     else:
         g.set_ylim([-4.65, 0])
-    g.set_xlabel('Time after transduction (h)', fontsize='14')
-    g.set_ylabel('ln(1-FracMethylation)', fontsize='14')        
-    g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Feature(Rel Rate)')
+    g.set_xlabel('Time after transduction (h)', fontsize=14)
+    g.set_ylabel('ln(1-Fraction methylated)', fontsize=14)
+    l = plt.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Feature(Rel Rate)')
+    plt.setp(l.get_title(), fontsize=12)  # Set title font size
+    # Directly modify the text size of each legend entry
+    for text in l.get_texts():
+        text._fontproperties._size = 12
+        text._fontproperties.set_size(12)
     plt.gcf().set_size_inches((5, 3.5))
     plt.tight_layout()
     plt.savefig(figure_name, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
@@ -148,23 +160,43 @@ def main(configfile: str, run: str):
     feat_fn = os.path.join(figure_source_dir, f"{figure_prefix}.hg38.feature.quantile.csv")
     cen_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.centromere.quantile.csv")
     chromhmm_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.chromhmm.quantile.csv")
+    mark_opti_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_optimal.quantile.csv")
+    mark_cons_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_conservative.quantile.csv")
 
     feat_rate_fn = os.path.join(figure_source_dir, f"{figure_prefix}.hg38.feature.rate.csv")
     cen_rate_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.centromere.rate.csv")
     chromhmm_rate_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.chromhmm.rate.csv")
+    mark_opti_rate_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_optimal.rate.csv")
+    mark_cons_rate_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_conservative.rate.csv")
+
+    if org == 'MCF7':
+        # active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2',]            
+        # other_list = ['ZNF/Rpts', 'Het', 'Het2', 'ReprPc', 'Biv', 'NoMark']
+        active_list = ['TSS', 'TssFlnk1', 'TssFlnk2','TssFlnk3', 'Tx', 'TxWk',
+            'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'LowAc']
+        other_list = ['ZNF/Rpts', 'Het',  'ReprPc', 'NoMark']
+    else:
+        active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'EnhWk']           
+        other_list = ['ZNF/Rpts', 'Het', 'ReprPc', 'Biv', 'NoMark']
 
 
     if run in ['full', 'calc']:
         if not os.path.exists(feat_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % feat_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % feat_fn)
         if not os.path.exists(cen_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % cen_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % cen_fn)
         if not os.path.exists(chromhmm_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % chromhmm_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % chromhmm_fn)
+        if not os.path.exists(mark_opti_fn):
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % mark_opti_fn)
+        if not os.path.exists(mark_cons_fn):
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % mark_cons_fn)
 
         feat_pd = pd.read_csv(feat_fn, index_col=None)
         centromoere_pd = pd.read_csv(cen_fn, index_col=None)
         chromhmm_quantile_pd = pd.read_csv(chromhmm_fn, index_col=None)
+        mark_opti_pd = pd.read_csv(mark_opti_fn, index_col=None)
+        mark_cons_pd = pd.read_csv(mark_cons_fn, index_col=None)
 
         feat_rate_pd = calc_methylation_rate(feat_pd, data_points)
         
@@ -184,19 +216,37 @@ def main(configfile: str, run: str):
         chromhmm_rate_pd = pd.concat([chromhmm_rate_pd, genome_row], ignore_index=True)
         chromhmm_rate_pd.to_csv(chromhmm_rate_fn, index=False)
 
+        mark_opti_rate_pd = calc_methylation_rate(mark_opti_pd, data_points)
+        mark_opti_rate_pd.insert(1, 'RelativeRate', mark_opti_rate_pd['Slope'] / genome_rate)
+        mark_opti_rate_pd = pd.concat([mark_opti_rate_pd, genome_row], ignore_index=True)
+        mark_opti_rate_pd.to_csv(mark_opti_rate_fn, index=False)
+
+        mark_cons_rate_pd = calc_methylation_rate(mark_cons_pd, data_points)
+        mark_cons_rate_pd.insert(1, 'RelativeRate', mark_cons_rate_pd['Slope'] / genome_rate)
+        mark_cons_rate_pd = pd.concat([mark_cons_rate_pd, genome_row], ignore_index=True)
+        mark_cons_rate_pd.to_csv(mark_cons_rate_fn, index=False)
+
         logger.info('Rate Calculation finished')
 
     if run in ['full', 'plot']:
         if not os.path.exists(feat_rate_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % feat_rate_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % feat_rate_fn)
         if not os.path.exists(cen_rate_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % cen_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % cen_fn)
         if not os.path.exists(chromhmm_rate_fn):
-            raise OSError('Cannot found %s, please run featPercentile first.' % chromhmm_rate_fn)
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % chromhmm_rate_fn)
+
+        if not os.path.exists(mark_opti_rate_fn):
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % mark_opti_rate_fn)
+        if not os.path.exists(mark_cons_rate_fn):
+            raise OSError('Cannot found %s, please run analyze_feature_percentile first.' % mark_cons_rate_fn)
         
         feat_rate_pd = pd.read_csv(feat_rate_fn, index_col=False)
         cen_rate_pd = pd.read_csv(cen_rate_fn, index_col=False)
         chromhmm_rate_pd = pd.read_csv(chromhmm_rate_fn, index_col=False)
+
+        mark_opti_rate_pd = pd.read_csv(mark_opti_rate_fn, index_col=False)
+        mark_cons_rate_pd = pd.read_csv(mark_cons_rate_fn, index_col=False)
 
         figure_name = f'{figure_prefix}.Gene.RelativeRate.byNDR.png'
         figure_name = os.path.join(figure_dir, figure_name)
@@ -221,13 +271,6 @@ def main(configfile: str, run: str):
         figure_name = f'{figure_prefix}.GeneralFeature.RelativeRate.png'
         figure_name = os.path.join(figure_dir, figure_name)   
         plot_methylation_rate(feat_rate_pd, data_points, feat_list, feat_names, figure_name)
-
-        if org == 'MCF7':
-            active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2',]            
-            other_list = ['ZNF/Rpts', 'Het', 'Het2', 'ReprPc', 'Biv', 'NoMark']
-        else:
-            active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'EnhWk']           
-            other_list = ['ZNF/Rpts', 'Het', 'ReprPc', 'Biv', 'NoMark']
 
         feat_list = active_list + ['Genome']  
         figure_name = f'{figure_prefix}.ChromHMM.RelativeRate.ActiveChromatin.png'     
@@ -255,11 +298,19 @@ def main(configfile: str, run: str):
         figure_name = f'{figure_prefix}.Centromere.RelativeRate.CENPA.png'                                   
         figure_name = os.path.join(figure_dir, figure_name)   
         plot_methylation_rate(cen_rate_pd, data_points, feat_list, feat_list, figure_name) 
-        
+
+        feat_list = ['H3K4me3','H3K27ac', 'H3K4me1',  'H3K36me3', 'H3K9me3', 'H3K27me3'] + ['Genome']
+        figure_name = f'{figure_prefix}.HistoneMark.RelativeRate.Optimal.png'
+        figure_name = os.path.join(figure_dir, figure_name)
+        plot_methylation_rate(mark_opti_rate_pd, data_points, feat_list, feat_list, figure_name)
+
+        figure_name = f'{figure_prefix}.HistoneMark.RelativeRate.Conservative.png'
+        figure_name = os.path.join(figure_dir, figure_name)
+        plot_methylation_rate(mark_cons_rate_pd, data_points, feat_list, feat_list, figure_name)
         logger.info('Rate Figures finished')
 
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
 

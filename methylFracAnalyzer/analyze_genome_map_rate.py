@@ -26,6 +26,7 @@ WINDOW = 100_000
 def load_sample_sheet(sample_fn: str, exp: str):
     sample_pd = pd.read_csv(sample_fn, sep='\t', names=['prefix', 'sample'])
     sample_list = sample_pd['sample'].values
+    data_points = None
     if exp == 'Live':
         data_points = [int(s[:-1]) for s in sample_list]
     elif exp == 'Nuclei':
@@ -185,7 +186,7 @@ def plot_genome_map(genome_rate_pd, cen_pos_pd, figure_fn):
 def main(configfile: str, resourcefile: str, run: str):
     if not configfile:
         click.echo(main.get_help(click.get_current_context()))
-        return  
+        return
     if not os.path.exists(configfile):
         raise ValueError('Cannot find configfile %s' %configfile)
     with open(configfile, "rb") as f:
