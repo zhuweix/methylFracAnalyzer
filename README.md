@@ -171,13 +171,13 @@ Optimal peaks for Histone Marks:
 
 MCF7: resource/MCF7_HistoneMark.optimal.csv.gz
 
-MCF10: resource/MCF10_HistoneMark.optimal.csv.gz
+MCF10A: resource/MCF10_HistoneMark.optimal.csv.gz
 
 Conservative peaks for Histone Marks:
 
 MCF7: resource/MCF7_HistoneMark.conservative.csv.gz
 
-MCF10: resource/MCF10_HistoneMark.conservative.csv.gz
+MCF10A: resource/MCF10_HistoneMark.conservative.csv.gz
 
 ChromHMM states:
 
