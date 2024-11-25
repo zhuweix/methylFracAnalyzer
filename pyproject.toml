@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "methylatedFractionAnalzyzer"
-version = "1.0.0"
+version = "1.0.1"
 description = "Process the bigwig file from the Snakemake workflow"
 authors = [
     {name = "Zhuwei Xu", email="zhuweix8@gmail.com"},

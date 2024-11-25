@@ -17,7 +17,7 @@ This software analyzes the methylated fraction of GATC sites in BigWig files gen
 analzyeMethylFrac featPercentile -c {path/to/sample.toml} -r [full/calc/plot]
 ```
 ### Description
-This subcommand calculates the percentiles (5%, 15%, 25%, 50%, 75%, 85%, 95%) in the provided features in `config/resource.toml` file. The provided resource files will process the following features: General Features in Hg38 (Gencode v43 annotation) including cpgislands, enhancers, silencers, tRNA genes, origin of replications, protein coding genes, centromeres and whole-genome data (details in the [Notice](#notice) section); Detailed centromeirc elements in T2T v1.1 assembly; ChromHMM states. The results are stored in CSV files within the `{figure_dir}/source` directory ({figure_dir} is specificed in the config toml file). 
+This subcommand calculates the percentiles (5%, 15%, 25%, 50%, 75%, 85%, 95%) in the provided features in `config/resource.toml` file. The provided resource files will process the following features: General Features in Hg38 (Gencode v43 annotation) including cpgislands, enhancers, silencers, tRNA genes, origin of replications, protein coding genes, centromeres and whole-genome data (details in the [Notice](#notice) section); Detailed centromeirc elements in T2T v1.1 assembly; Histone Marks and ChromHMM states. The results are stored in CSV files within the `{figure_dir}/source` directory ({figure_dir} is specificed in the config toml file). 
 
 This subcommand also plots the the percentiles in Time Series according to the sample sheet (`sample/example_sample_sheet.tsv`), which is the same sample sheet in the snakemake workflow. The plots are stored in separate folders in the `{figure_dir}`. Furthermore, median plots comparing different features are also generated in the `{figure_dir}/median`.
 
@@ -36,7 +36,7 @@ Optional arguments:
 [Usage](#usage-2) | [Description](#description-2) | [Options](#options-2)
 ### Usage
 ```
-analzyeMethylFrac featMethRate -c {path/to/sample.toml} -r [full/calc/plot]
+analzyeMethylFrac featRate -c {path/to/sample.toml} -r [full/calc/plot]
 ```
 ### Description
 This subcommand calculates the methylation rate in the provided features in `config/resource.toml` file, which are listed in [Percentile Time Series Analysis](#percentile-time-series-analysis) section. This subcommand calculated the methylation rate in each feature using the median methylated fractions in each feature, which are calculated in the `featPercentile` subcommand. The results are stored in CSV files within the `{figure_dir}/source` directory ({figure_dir} is specificed in the config toml file). The relative methylation rate is calculated by dividing the methylation rate using the whole-genome methylation rate (rate calculated by the median methylated fraction).
@@ -118,10 +118,10 @@ Optional arguments:
 -R --resourcefile: The path to the resource toml file. The resource toml file for the provided resource files is `config/resource.toml`.
 
 ## Installation
-This software is written in Python 3.12. The required packages are in pyproject.toml file. The users could install the required packages using the following command:
+This software is written in Python 3.12. The required packages are in pyproject.toml file. The users could install the required packages using the following command using hatchling backend:
 ```
-# optional: upgrade setuptools and whell
-pip install --upgrade pip setuptools wheel
+# optional: install and upgrade build setuptools and whell
+pip install --upgrade build pip setuptools wheel
 
 git clone https://github.com/zhuweix/methylFracAnalyzer.git
 
@@ -163,15 +163,30 @@ Location of active alpha satellites: resource/active_hor.csv
 
 Location of CENPA regions: resource/cenpA_location.csv
 
-### ChromHMM States
+### Histone Marks and ChromHMM States
 
-The ChromHMM states are predicted by ChromHMM software[6]. We aligned the raw ChIP-seq data to T2T v1.1 assembly and used the ChromHMM software to predict 15 ChromHMM states. The states are renamed based on the combination the histone marks and enrichment in genomic locations in a similar fashion with Ernst et al [6]. The GEO accession number of ChIP-seq data is GSE85158 and GSE190161 for MCF7 and GSE85158 for MCF10A [7, 8].
+We aligned the raw ChIP-seq data to T2T v1.1 assembly using [chip-seq-pipeline2](https://github.com/ENCODE-DCC/chip-seq-pipeline2) and predicted optimal and conservative peaks for Histone Marks. We used the ChromHMM software to predict 15 ChromHMM states based on the aligned BAM files [6]. The states are renamed based on the combination the histone marks and enrichment in genomic locations in a similar fashion with Ernst et al [6]. The GEO accession number of ChIP-seq data is GSE85158 for MCF7 and MCF10A [7].
 
-List of used annotation files:
+Optimal peaks for Histone Marks:
+
+MCF7: resource/MCF7_HistoneMark.optimal.csv.gz
+
+MCF10: resource/MCF10_HistoneMark.optimal.csv.gz
+
+Conservative peaks for Histone Marks:
+
+MCF7: resource/MCF7_HistoneMark.conservative.csv.gz
+
+MCF10: resource/MCF10_HistoneMark.conservative.csv.gz
+
+ChromHMM states:
 
 MCF7: resource/MCF7_ChromHMM.t2t.csv.gz
 
 MCf10A: resource/MCF10_ChromHMM.t2t.csv.gz
+
+
+
 
 ### MNase-seq data
 The MNase-seq data are used to plot the nucleosome phasing relative to CTCF sites and TSS of protein-coding genes. The MNase-seq data are available in GEO (TBD). The MNase-seq data were aligned to Hg38 genome and the single nucleosome fragments were filtered be size=120 to 180 bp. The nucleosome dyads were counted by the center of the fragments. For each gene transcript specified in the [Protein-coding genes](#protein-coding-genes) section, the nucleosome dyads in +/- 2010 bp of the TSS were counted, and the dyad count were normalized by the average dyad count in the flanking regions. The average dyad count of the active and inactive genes were further smoothed in 21-bp windows using moving average. The smoothed dyad count relative to CTCF sites were also calculated in the samilar way. MCF10A and MCF7 cells were similar cell lines and we currently also used the MNase data in MCF7 to show the nucleosome phasing in MCF10A cells as well.
@@ -198,7 +213,5 @@ TBD
 
 [6] Ernst, J. & Kellis, M.. Chromatin-state discovery and genome annotation with ChromHMM. Nature Protocols 12, 2478–2492 (2017).
 [7] Franco, H. L.. Enhancer transcription reveals subtype-specific gene expression programs controlling breast cancer pathogenesis. Genome Research 28, 159–170 (2018).
-[8] Bommi-Reddy, A.. CREBBP/EP300 acetyltransferase inhibition disrupts FOXA1-bound enhancers to inhibit the proliferation of ER+ breast cancer cells. PLOS ONE 17, e0262378 (2022).
-
 
 

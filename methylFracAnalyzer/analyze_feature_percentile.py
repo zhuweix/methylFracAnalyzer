@@ -1,7 +1,6 @@
 import os
 import sys
 import gc
-import sqlite3
 import tomllib
 import logging
 
@@ -25,6 +24,7 @@ PROMOTER_FLANK = 200
 def load_sample_sheet(sample_fn: str, exp: str):
     sample_pd = pd.read_csv(sample_fn, sep='\t', names=['prefix', 'sample'])
     sample_list = sample_pd['sample'].values
+    data_points = None
     if exp == 'Live':
         data_points = [int(s[:-1]) for s in sample_list]
     elif exp == 'Nuclei':
@@ -56,9 +56,13 @@ def load_annotation(resource: dict, org: str):
     if org == 'MCF7':
         gene_fn = resource['MCF7']['gene_table']
         chromhmm_fn = resource['MCF7']['chromhmm_table']
+        mark_cons_fn = resource['MCF7']['histone_mark_table_conservative']
+        mark_opti_fn = resource['MCF7']['histone_mark_table_optimal']
     elif org == 'MCF10':
         gene_fn =  resource['MCF10']['gene_table']
         chromhmm_fn = resource['MCF10']['chromhmm_table']
+        mark_cons_fn = resource['MCF10']['histone_mark_table_conservative']
+        mark_opti_fn = resource['MCF10']['histone_mark_table_optimal']
     else:
         raise ValueError('Invalid Org: %s' %org)
 
@@ -68,6 +72,8 @@ def load_annotation(resource: dict, org: str):
     active_asat_pd = pd.read_csv(active_asat_fn, index_col=None)
     cenpa_pd = pd.read_csv(cenpa_fn, index_col=None)
     chromhmm_pd = pd.read_csv(chromhmm_fn, index_col=None, usecols=['Chrom', 'Start', 'End', 'StateName'])
+    mark_opti_pd = pd.read_csv(mark_opti_fn, index_col=None)
+    mark_cons_pd = pd.read_csv(mark_cons_fn, index_col=None)
 
     # promoter and genebody
 
@@ -91,7 +97,7 @@ def load_annotation(resource: dict, org: str):
             promoter_pd.append(tmp_prom_pd)           
     promoter_pd = pd.concat(promoter_pd)
 
-    return promoter_pd, gene_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd
+    return promoter_pd, gene_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd, mark_opti_pd, mark_cons_pd
 
 
 def calculate_percentile(exp: str, dpni_dict: dict, sample_list: list, data_points: list):
@@ -156,7 +162,9 @@ def calculate_percentile(exp: str, dpni_dict: dict, sample_list: list, data_poin
 
 
 def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict, 
-    promoter_pd, genebody_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd, org):
+    promoter_pd, genebody_pd, other_pd, cen_elem_pd, active_asat_pd, 
+    cenpa_pd, chromhmm_pd, mark_opti_pd, mark_cons_pd, org):
+    
     chrom_list = [f'chr{i}' for i in range(1, 23)] + ['chrX']
     # Hg38: promoter, genebody and other features
     genome_dict = {}
@@ -234,13 +242,17 @@ def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict,
     cepna_dict = {}
     chromhmm_dict = {}
     asat_chrom_dict = {}
+    mark_opti_dict = {}
+    mark_cons_dict = {}
     element_list = ['αSat-Active', 'αSat-Inactive', 'αSat-Other', 'HSat1',
         'HSat2', 'HSat3', 'βSat', 'rDNA', 'OtherSat', 'NonSat']
     sf_list = ['SF1', 'SF2', 'SF3', 'SF01']
+    histone_mark_list = ['H3K4me3','H3K27ac', 'H3K4me1',  'H3K36me3', 'H3K9me3', 'H3K27me3', ]
 
     if org == 'MCF7':
-        state_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 
-                    'ZNF/Rpts', 'Het', 'Het2', 'ReprPc', 'Biv', 'NoMark']
+        state_list = ['TSS', 'TssFlnk1', 'TssFlnk2','TssFlnk3', 'Tx', 'TxWk',
+                'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'LowAc',
+                'ZNF/Rpts', 'Het',  'ReprPc', 'NoMark']
     else:
         state_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 
                     'EnhWk', 'ZNF/Rpts', 'Het', 'ReprPc', 'Biv', 'NoMark']
@@ -252,6 +264,8 @@ def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict,
         c_dict = {s: [] for s in sf_list}
         c_dict['all'] = []
         ch_dict = {s: [] for s in state_list}
+        mo_dict = {m: [] for m in histone_mark_list}
+        mc_dict = {m: [] for m in histone_mark_list}
         with pyBigWig.open(bw_fn) as bw:
             for chrom in chrom_list:
                 size = bw.chroms()[chrom]
@@ -262,6 +276,10 @@ def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict,
                 tmp_cenpa_pd = cenpa_pd.loc[cenpa_pd['Chrom'] == chrom]
 
                 tmp_chromhmm_pd = chromhmm_pd.loc[chromhmm_pd['Chrom'] == chrom]
+
+                tmp_mark_opti_pd = mark_opti_pd.loc[mark_opti_pd['Chrom'] == chrom]
+                tmp_mark_cons_pd = mark_cons_pd.loc[mark_cons_pd['Chrom'] == chrom]
+
 
                 for elem in element_list:
                     tmp_pd = tmp_elem_pd.loc[tmp_elem_pd['Class'] == elem]
@@ -296,7 +314,17 @@ def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict,
                         tmp = tmp[~np.isnan(tmp)]
                         ch_dict[s].append(tmp)
 
-    
+                for m in histone_mark_list:
+                    tmp_pd = tmp_mark_opti_pd.loc[tmp_mark_opti_pd['Mark'] == m]
+                    for start, end in zip(tmp_pd['Start'], tmp_pd['End']):
+                        tmp = tmp_dpni[start: end]
+                        tmp = tmp[~np.isnan(tmp)]
+                        mo_dict[m].append(tmp)
+                    tmp_pd = tmp_mark_cons_pd.loc[tmp_mark_cons_pd['Mark'] == m]
+                    for start, end in zip(tmp_pd['Start'], tmp_pd['End']):
+                        tmp = tmp_dpni[start: end]
+                        tmp = tmp[~np.isnan(tmp)]
+                        mc_dict[m].append(tmp)    
 
             for k in e_dict.keys():
                 e_dict[k] = np.concatenate(e_dict[k])
@@ -308,15 +336,23 @@ def calculate_features(sample_list, bw_hg38_dict, bw_t2t_dict,
                 ch_dict[k] = np.concatenate(ch_dict[k])
             for k in ac_dict.keys():
                 ac_dict[k] = np.concatenate(ac_dict[k])
+            for k in mo_dict.keys():
+                mo_dict[k] = np.concatenate(mo_dict[k])
+            for k in mc_dict.keys():
+                mc_dict[k] = np.concatenate(mc_dict[k])
+
             cen_elem_dict[sample] = e_dict
             asat_dict[sample] = a_dict
             cepna_dict[sample] = c_dict
             chromhmm_dict[sample] = ch_dict
             asat_chrom_dict[sample] = ac_dict
+            mark_opti_dict[sample] = mo_dict
+            mark_cons_dict[sample] = mc_dict
             logger.info('Calulation of features in T2T in %s is done.' %sample)
             gc.collect()
     
-    return genome_dict, promoter_dict, gene_dict, other_dict, cen_elem_dict, asat_dict, asat_chrom_dict, cepna_dict, chromhmm_dict
+    return (genome_dict, promoter_dict, gene_dict, other_dict, cen_elem_dict, 
+            asat_dict, asat_chrom_dict, cepna_dict, chromhmm_dict, mark_opti_dict, mark_cons_dict)
             
 
 def plot_percentile_individual(plot_pd: pd.DataFrame,
@@ -359,13 +395,13 @@ def plot_percentile_individual(plot_pd: pd.DataFrame,
         g.set_xlabel('Time after transduction (h)', fontsize='14')
     elif experiment == 'Nuclei':
         g.set_xlabel('Dam concentration (nM)', fontsize='14')
-    g.set_ylabel('Fraction methylated (cut by DpnI) (%)', fontsize='12')
+    g.set_ylabel('Fraction methylated\n(cut by DpnI) (%)', fontsize='14')
 
     g.set(xlim=(0, max(xpos)))
     g.set(ylim=(0, 100))
     g.set(yticks=np.arange(0, 101, 10), xticks=xpos)
     # set figure size
-    g.figure.set_size_inches(6, 4)
+    g.figure.set_size_inches(4, 3)
     plt.savefig(figure_fn, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
     plt.close()
 
@@ -377,11 +413,15 @@ def plot_all_median(plot_pd: pd.DataFrame, feat_list: list, feat_name_list: list
     xpos = datapoints
     if len(feat_list) <= 10:
         cmap = sns.color_palette('tab10')
+    elif len(feat_list) <= 20:
+        cmap = sns.color_palette('tab20')
     else:
         cmap = sns.color_palette('viridis', n_colors=len(feat_list))
     sns.set_palette(cmap)
     for feat, feat_name in zip(feat_list, feat_name_list):
         q50 = plot_pd.loc[plot_pd['Feature'] == feat]['q50'].values
+        if np.all(np.isnan(q50)):
+            continue
         g = sns.lineplot(x=xpos, y=q50, label=feat_name)
     if len(feat_list) <= 10:
         g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Feature')
@@ -392,12 +432,12 @@ def plot_all_median(plot_pd: pd.DataFrame, feat_list: list, feat_name_list: list
     elif exp == 'Nuclei':
         g.set_xlabel('Dam concentration (nM)', fontsize='14')
 
-    g.set_ylabel('Fraction methylated (cut by DpnI) (%)', fontsize='12')
+    g.set_ylabel('Fraction methylated\n(cut by DpnI) (%)', fontsize='14')
     g.set(xlim=(0, max(xpos)))
     g.set(ylim=(0, 100))
     g.set(yticks=np.arange(0, 101, 10), xticks=xpos)
     # set figure size
-    g.figure.set_size_inches(6, 4)
+    g.figure.set_size_inches(4, 3)
     plt.savefig(figure_name, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
     plt.close()
     plot_pd.to_csv(figure_source_name, index=False)
@@ -435,6 +475,22 @@ def main(configfile: str, resourcefile: str, run: str):
     output_feat_fn = os.path.join(figure_source_dir, f"{figure_prefix}.hg38.feature.quantile.csv")
     output_cen_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.centromere.quantile.csv")
     output_chromhmm_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.chromhmm.quantile.csv")
+    output_mark_opti_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_optimal.quantile.csv")
+    output_mark_cons_fn = os.path.join(figure_source_dir, f"{figure_prefix}.t2t.histonemark_conservative.quantile.csv")
+
+    if org == 'MCF7':
+        state_list = ['TSS', 'TssFlnk1', 'TssFlnk2','TssFlnk3', 'Tx', 'TxWk',
+            'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'LowAc',
+            'ZNF/Rpts', 'Het',  'ReprPc', 'NoMark']
+        active_list = ['TSS', 'TssFlnk1', 'TssFlnk2','TssFlnk3', 'Tx', 'TxWk',
+            'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'LowAc',]
+        other_list = ['ZNF/Rpts', 'Het',  'ReprPc', 'NoMark']
+    else:
+        state_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 
+                    'EnhWk', 'ZNF/Rpts', 'Het', 'ReprPc', 'Biv', 'NoMark']
+        active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 'EnhWk']
+        other_list = ['Het', 'ReprPc', 'Biv', 'NoMark']
+    histone_mark_list = ['H3K4me3','H3K27ac', 'H3K4me1',  'H3K36me3', 'H3K9me3', 'H3K27me3']
 
     if run in ['full', 'calc']:
         # calculate the percentiles
@@ -444,13 +500,16 @@ def main(configfile: str, resourcefile: str, run: str):
         with open(resourcefile, "rb") as f:
             resource = tomllib.load(f)
 
-        promoter_pd, genebody_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd = load_annotation(resource, org)
+        promoter_pd, genebody_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd, mark_opti_pd, mark_cons_pd = load_annotation(resource, org)
 
-        genome_dict, promoter_dict, gene_dict, other_dict, cen_elem_dict, asat_dict, asat_chrom_dict, cepna_dict, chromhmm_dict = calculate_features(
-            sample_list, bw_hg38_dict, bw_t2t_dict, promoter_pd, genebody_pd, other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd, org)
+        (genome_dict, promoter_dict, gene_dict, other_dict, cen_elem_dict,
+        asat_dict, asat_chrom_dict, cepna_dict, chromhmm_dict,
+        mark_opti_dict, mark_cons_dict) = calculate_features(
+            sample_list, bw_hg38_dict, bw_t2t_dict, promoter_pd, genebody_pd, 
+            other_pd, cen_elem_pd, active_asat_pd, cenpa_pd, chromhmm_pd, mark_opti_pd, mark_cons_pd, org)
 
         feature_pd = []
-        transcript_level = ['NoTrans'] + [f'Q{i}' for i in range(1, 6)]   
+        transcript_level = ['NoTrans'] + [f'Q{i}' for i in range(1, 6)]
         # genome
         tmp_pd = calculate_percentile(exp, genome_dict, sample_list, data_points)
         tmp_pd.insert(0, 'Feature', 'Genome')
@@ -552,12 +611,6 @@ def main(configfile: str, resourcefile: str, run: str):
         centromoere_pd = pd.concat(centromoere_pd)
         centromoere_pd.to_csv(output_cen_fn, index=False)
 
-        if org == 'MCF7':
-            state_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 
-                        'ZNF/Rpts', 'Het', 'Het2', 'ReprPc', 'Biv', 'NoMark']
-        else:
-            state_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2', 
-                        'EnhWk', 'ZNF/Rpts', 'Het', 'ReprPc', 'Biv', 'NoMark']
 
         chromhmm_quantile_pd = []
         for e in state_list:
@@ -568,19 +621,47 @@ def main(configfile: str, resourcefile: str, run: str):
 
         chromhmm_quantile_pd = pd.concat(chromhmm_quantile_pd)
         chromhmm_quantile_pd.to_csv(output_chromhmm_fn, index=False)
+        # Histone Marks
+        histone_mark_opti_pd = []
+        for m in histone_mark_list:
+            tmp_dict = {s: mark_opti_dict[s][m] for s in sample_list}
+            tmp_pd = calculate_percentile(exp, tmp_dict, sample_list, data_points)
+            tmp_pd.insert(0, 'Feature', m)     
+            histone_mark_opti_pd.append(tmp_pd) 
+
+        histone_mark_opti_pd = pd.concat(histone_mark_opti_pd)
+        histone_mark_opti_pd.to_csv(output_mark_opti_fn, index=False)
+        histone_mark_cons_pd = []
+        for m in histone_mark_list:
+            tmp_dict = {s: mark_cons_dict[s][m] for s in sample_list}
+            tmp_pd = calculate_percentile(exp, tmp_dict, sample_list, data_points)
+            tmp_pd.insert(0, 'Feature', m)     
+            histone_mark_cons_pd.append(tmp_pd) 
+
+        histone_mark_cons_pd = pd.concat(histone_mark_cons_pd)
+        histone_mark_cons_pd.to_csv(output_mark_cons_fn, index=False)
+
+        del feature_pd, centromoere_pd, chromhmm_quantile_pd, mark_opti_pd, mark_cons_pd
+        gc.collect()
 
     # plot the figures
-    if run in ['full', 'plot']:    
+    if run in ['full', 'plot']:
         if not os.path.exists(output_feat_fn):
             raise OSError('Cannot found %s, please run calc first.' % output_feat_fn)
         if not os.path.exists(output_cen_fn):
             raise OSError('Cannot found %s, please run calc first.' % output_cen_fn)
         if not os.path.exists(output_chromhmm_fn):
             raise OSError('Cannot found %s, please run calc first.' % output_chromhmm_fn)
+        if not os.path.exists(output_mark_opti_fn):
+            raise OSError('Cannot found %s, please run calc first.' % output_mark_opti_fn)
+        if not os.path.exists(output_mark_cons_fn):
+            raise OSError('Cannot found %s, please run calc first.' % output_mark_cons_fn)
 
         feat_pd = pd.read_csv(output_feat_fn, index_col=None)
         centromoere_pd = pd.read_csv(output_cen_fn, index_col=None)
         chromhmm_quantile_pd = pd.read_csv(output_chromhmm_fn, index_col=None)
+        mark_opti_pd = pd.read_csv(output_mark_opti_fn, index_col=None)
+        mark_cons_pd = pd.read_csv(output_mark_cons_fn, index_col=None)
 
         # individual figures
         figure_dir_ind = os.path.join(figure_dir, 'general')
@@ -619,6 +700,28 @@ def main(configfile: str, resourcefile: str, run: str):
                                 experiment=exp)
         logger.info('ChromHMM features are plotted')
 
+        figure_dir_ind = os.path.join(figure_dir, 'histone_mark_optimal')
+        os.makedirs(figure_dir_ind, exist_ok=True)
+        for feat, tmp_pd in mark_opti_pd.groupby('Feature'):
+            figname = f'{figure_prefix}.HistoneMarkOptimal.Quantile.{feat}.png'
+            plot_percentile_individual(plot_pd=tmp_pd,
+                                datapoints=data_points,
+                                figure_dirn=figure_dir_ind, 
+                                figure_name=figname,
+                                experiment=exp)
+        logger.info('Histone Mark Optimal features are plotted')
+
+        figure_dir_ind = os.path.join(figure_dir, 'histone_mark_conservative')
+        os.makedirs(figure_dir_ind, exist_ok=True)
+        for feat, tmp_pd in mark_cons_pd.groupby('Feature'):
+            figname = f'{figure_prefix}.Histone_Mark_Conservative.Quantile.{feat}.png'
+            plot_percentile_individual(plot_pd=tmp_pd,
+                                datapoints=data_points,
+                                figure_dirn=figure_dir_ind, 
+                                figure_name=figname,
+                                experiment=exp)
+        logger.info('Histone Mark Conservative features are plotted')
+
         # median plot
         figure_dir_median = os.path.join(figure_dir, 'median')
         os.makedirs(figure_dir_median, exist_ok=True)
@@ -649,7 +752,6 @@ def main(configfile: str, resourcefile: str, run: str):
         tmp_pd = feat_pd.loc[feat_pd['Feature'].isin(feat_list)]
         plot_all_median(plot_pd=tmp_pd, feat_list=feat_list, feat_name_list=feat_names, datapoints=data_points,
                     figure_dirn=figure_dir_median, figure_source_dirn=figure_source_dir, figure_name=figure_name, exp=exp)
-
 
         if org == 'MCF7':
             active_list = ['TSS', 'TssFlnk1', 'TssFlnk2', 'Tx', 'TxWk', 'EnhG1', 'EnhG2', 'EnhA1', 'EnhA2',]            
@@ -694,7 +796,14 @@ def main(configfile: str, resourcefile: str, run: str):
         tmp_pd = centromoere_pd.loc[centromoere_pd['Feature'].isin(feat_list)]
         plot_all_median(plot_pd=tmp_pd, feat_list=feat_list, feat_name_list=feat_list, datapoints=data_points,
                     figure_dirn=figure_dir_median, figure_source_dirn=figure_source_dir, figure_name=figure_name, exp=exp)     
-        logger.info('Median plots are plotted') 
+
+        figure_name = f'{figure_prefix}.HistoneMark_Optimal.percentile.png'
+        plot_all_median(plot_pd=mark_opti_pd, feat_list=histone_mark_list, feat_name_list=histone_mark_list, datapoints=data_points,
+                    figure_dirn=figure_dir_median, figure_source_dirn=figure_source_dir, figure_name=figure_name, exp=exp)
+        figure_name = f'{figure_prefix}.HistoneMark_Conservative.percentile.png'
+        plot_all_median(plot_pd=mark_cons_pd, feat_list=histone_mark_list, feat_name_list=histone_mark_list, datapoints=data_points,
+                    figure_dirn=figure_dir_median, figure_source_dirn=figure_source_dir, figure_name=figure_name, exp=exp)
+        logger.info('Median plots are plotted')
 
 
 # if __name__ == '__main__':

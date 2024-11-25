@@ -1,9 +1,7 @@
 import os
 import sys
-import gc
 import tomllib
 import logging
-import pickle
 
 import click
 import pandas as pd
@@ -12,7 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib import patches as mpatches
 import seaborn as sns
 import pyBigWig
-import statsmodels.api as sm
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -26,6 +23,7 @@ WINDOW = 100_000
 def load_sample_sheet(sample_fn: str, exp: str):
     sample_pd = pd.read_csv(sample_fn, sep='\t', names=['prefix', 'sample'])
     sample_list = sample_pd['sample'].values
+    data_points = None
     if exp == 'Live':
         data_points = [int(s[:-1]) for s in sample_list]
     elif exp == 'Nuclei':
@@ -177,5 +175,5 @@ def main(configfile: str, resourcefile: str, run: str):
         cen_pos_pd = pd.read_csv(cen_loc_fn, index_col=False)
         plot_genome_map(genome_frac_pd, cen_pos_pd, figure_prefix, data_points, exp)
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

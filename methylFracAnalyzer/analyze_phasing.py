@@ -1,6 +1,5 @@
 import os
 import sys
-import gc
 import tomllib
 import logging
 
@@ -25,6 +24,7 @@ MNASE_REL = 30
 def load_sample_sheet(sample_fn: str, exp: str):
     sample_pd = pd.read_csv(sample_fn, sep='\t', names=['prefix', 'sample'])
     sample_list = sample_pd['sample'].values
+    data_points = None
     if exp == 'Live':
         data_points = [int(s[:-1]) for s in sample_list]
     elif exp == 'Nuclei':
@@ -160,13 +160,16 @@ def plot_gene_phasing(gene_active_fn, gene_inactive_fn, gene_active_fig, gene_in
         g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Dam (nM)')
 
              
-    g.set_ylabel('Fraction methylated (cut by DpnI) (%)', fontsize='12')
+    g.set_ylabel('Fraction methylated\n(cut by DpnI) (%)', fontsize='12')
     g.set_xlabel('Relative to TSS (bp)', fontsize='14')
+
     g.set(xlim=(-FLANK, FLANK), xticks=np.arange(-FLANK, FLANK+1, 200))
     g.set(ylim=(0, 100))
     g.set(yticks=np.arange(0, 101, 10))
+    plt.tick_params(axis='y', which='major', labelsize=10)   
+    plt.tick_params(axis='x', which='major', labelsize=8)
     # set figure size
-    g.figure.set_size_inches(5.2, 4)
+    g.figure.set_size_inches(4, 3)
     plt.savefig(gene_active_fig, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
     plt.close()
 
@@ -183,13 +186,15 @@ def plot_gene_phasing(gene_active_fn, gene_inactive_fn, gene_active_fig, gene_in
         g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Time (h)')
     else:
         g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Dam (nM)')        
-    g.set_ylabel('Fraction methylated (cut by DpnI) (%)', fontsize='12')
+    g.set_ylabel('Fraction methylated\n(cut by DpnI) (%)', fontsize='14')
     g.set_xlabel('Relative to TSS (bp)', fontsize='14')
     g.set(xlim=(-FLANK, FLANK), xticks=np.arange(-FLANK, FLANK+1, 200))
     g.set(ylim=(0, 100))
     g.set(yticks=np.arange(0, 101, 10))
+    plt.tick_params(axis='y', which='major', labelsize=10)   
+    plt.tick_params(axis='x', which='major', labelsize=8)
     # set figure size
-    g.figure.set_size_inches(5.2, 4)
+    g.figure.set_size_inches(4, 3)
     plt.savefig(gene_inactive_fig, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
     plt.close()
 
@@ -206,14 +211,14 @@ def plot_ctcf_phasing(ctcf_fn, gene_ctcf_fig, data_points, exp):
     if exp == 'Live':
         g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Time (h)')
     else:
-        g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Dam (nM)')           
-    g.set_ylabel('Fraction methylated (cut by DpnI) (%)', fontsize='12')
-    g.set_xlabel('Relative to Motif (bp)', fontsize='14')
+        g.legend(loc='upper left', bbox_to_anchor=(1.01, 1), title='Dam (nM)')         
+    g.set_ylabel('Fraction methylated\n(cut by DpnI) (%)', fontsize='14')
+    g.set_xlabel('Relative to CTCF Motif (bp)', fontsize='14')
     g.set(xlim=(-FLANK, FLANK), xticks=np.arange(-FLANK, FLANK+1, 200))
     g.set(ylim=(0, 100))
     g.set(yticks=np.arange(0, 101, 10))
     # set figure size
-    g.figure.set_size_inches(5.2, 4)
+    g.figure.set_size_inches(4, 3)
     plt.savefig(gene_ctcf_fig, dpi=300, facecolor='white', bbox_inches='tight', transparent=False)
     plt.close()
 
@@ -285,5 +290,5 @@ def main(configfile: str, resourcefile: str, run: str):
         logger.info('Phasing plots are done')
 
 
-if __name__ == '__main__':
-    main()  
+# if __name__ == '__main__':
+#     main()  
