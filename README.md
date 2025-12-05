@@ -198,7 +198,8 @@ CTCF: resource/MCF7_MNase.CTCF_average_phasing.csv
 
 ## Citation
 Please cite the following paper if you use this software:
-TBD
+
+Prajapati, H.K., Xu, Z., Eriksson, P.R. et al. Nucleosome dynamics render heterochromatin accessible in living human cells. Nat Commun 16, 4577 (2025). https://doi.org/10.1038/s41467-025-59994-7
 
 ## Reference
 [1] Tian, C.. Impaired histone inheritance promotes tumor progression. Nature Communications 14, (2023).
